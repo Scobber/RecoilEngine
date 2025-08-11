@@ -13,8 +13,11 @@ static SDL_MetalView metalView = nullptr;
 static struct CAMetalLayer* metalLayer = nullptr;
 
 // implemented in MetalContext.mm
-extern "C" void InitMetalContext(struct CAMetalLayer* layer);
+struct CAMetalDrawable;
+extern "C" bool InitMetalContext(struct CAMetalLayer* layer, int width, int height);
 extern "C" void DestroyMetalContext();
+extern "C" void SetMetalDrawableSize(int width, int height);
+extern "C" struct CAMetalDrawable* CreateDrawable();
 #endif
 #include <System/GflagsExt.h>
 
@@ -444,7 +447,10 @@ bool SpringApp::InitWindow(const char* title)
         metalView = SDL_Metal_CreateView(globalRendering->GetWindow());
         // layer is owned by the SDL view; pointer remains valid until SDL_Metal_DestroyView
         metalLayer = (struct CAMetalLayer*)SDL_Metal_GetLayer(metalView);
-        InitMetalContext(metalLayer);
+        int winW = 0, winH = 0;
+        SDL_GetWindowSize(globalRendering->GetWindow(), &winW, &winH);
+        if (!InitMetalContext(metalLayer, winW, winH))
+                return false;
 #endif
 
 	// Something in SDL_SetVideoMode (OpenGL drivers?) messes with the FPU control word.
@@ -1133,17 +1139,20 @@ bool SpringApp::MainEventHandler(const SDL_Event& event)
 
 					Watchdog::ClearTimer(WDT_MAIN, true);
 
-					{
-						SCOPED_ONCE_TIMER("GlobalRendering::UpdateGL");
+                                        {
+                                                SCOPED_ONCE_TIMER("GlobalRendering::UpdateGL");
 
-						SaveWindowPosAndSize();
-						globalRendering->UpdateGLConfigs();
-						globalRendering->UpdateGLGeometry();
-						globalRendering->InitGLState();
-						UpdateInterfaceGeometry();
-					}
-					{
-						SCOPED_ONCE_TIMER("ActiveController::ResizeEvent");
+                                                SaveWindowPosAndSize();
+                                                globalRendering->UpdateGLConfigs();
+                                                globalRendering->UpdateGLGeometry();
+                                                globalRendering->InitGLState();
+                                                UpdateInterfaceGeometry();
+                                        }
+#ifdef USE_METAL
+                                        SetMetalDrawableSize(globalRendering->viewSizeX, globalRendering->viewSizeY);
+#endif
+                                        {
+                                                SCOPED_ONCE_TIMER("ActiveController::ResizeEvent");
 
 						activeController->ResizeEvent();
 						mouseInput->InstallWndCallback();

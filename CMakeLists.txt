@@ -110,12 +110,41 @@ if(APPLE AND USE_METAL)
   find_library(QUARTZCORE_LIBRARY QuartzCore)
   find_library(COCOA_LIBRARY Cocoa)
 
+  # locate xcrun tools for compiling Metal shaders
+  find_program(XCRUN xcrun)
+  execute_process(COMMAND ${XCRUN} -f metal OUTPUT_VARIABLE XCRUN_METAL
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${XCRUN} -f metallib OUTPUT_VARIABLE XCRUN_METALLIB
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  # compile .metal shaders into .metallib libraries
+  file(GLOB METAL_SHADER_SOURCES
+    "${CMAKE_SOURCE_DIR}/cont/base/springcontent/shaders/MSL/*.metal")
+  set(METAL_SHADER_LIBS "")
+  foreach(SRC ${METAL_SHADER_SOURCES})
+    get_filename_component(MSL_BASENAME ${SRC} NAME_WE)
+    set(AIR_FILE "${CMAKE_BINARY_DIR}/${MSL_BASENAME}.air")
+    set(LIB_FILE "${CMAKE_BINARY_DIR}/${MSL_BASENAME}.metallib")
+    add_custom_command(
+      OUTPUT ${LIB_FILE}
+      COMMAND ${XCRUN_METAL} -c ${SRC} -o ${AIR_FILE}
+      COMMAND ${XCRUN_METALLIB} ${AIR_FILE} -o ${LIB_FILE}
+      DEPENDS ${SRC}
+      COMMENT "Compiling ${MSL_BASENAME}.metal"
+    )
+    list(APPEND METAL_SHADER_LIBS ${LIB_FILE})
+  endforeach()
+  add_custom_target(metal_shaders ALL DEPENDS ${METAL_SHADER_LIBS})
+
+  set(METAL_FRAMEWORKS ${METAL_LIBRARY} ${METALKIT_LIBRARY} ${QUARTZCORE_LIBRARY} ${COCOA_LIBRARY} CACHE INTERNAL "")
+
   # expose compile-time switch for Metal features
   add_definitions(-DUSE_METAL)
 
   # ensure Objective-C++ sources compile with the correct language
   set_source_files_properties(
     rts/System/Platform/Mac/SDLMain.m
+    rts/Rendering/Metal/MetalBackend.mm
     PROPERTIES LANGUAGE OBJCXX
   )
 endif()
@@ -643,6 +672,11 @@ add_subdirectory(cont)
 
 # As rts/builds/* depends on most other stuff, we add this one as last
 add_subdirectory(rts)
+
+if(APPLE AND USE_METAL)
+  add_custom_target(engine-metal-debug DEPENDS engine-legacy)
+  add_custom_target(engine-metal-release DEPENDS engine-legacy)
+endif()
 
 # Unit tests
 # this has to be in root CMakeLists.txt

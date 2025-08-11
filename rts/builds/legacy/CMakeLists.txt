@@ -50,8 +50,11 @@ if    (UNIX)
 endif (UNIX)
 
 if (APPLE)
-	find_library(COREFOUNDATION_LIBRARY Foundation)
-	list(APPEND engineLibraries ${COREFOUNDATION_LIBRARY})
+        find_library(COREFOUNDATION_LIBRARY Foundation)
+        list(APPEND engineLibraries ${COREFOUNDATION_LIBRARY})
+        if(USE_METAL)
+                list(APPEND engineLibraries ${METAL_FRAMEWORKS})
+        endif()
 endif (APPLE)
 
 list(APPEND engineLibraries squish rgetc1)

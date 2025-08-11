@@ -656,9 +656,14 @@ void CShadowHandler::CreateShadows()
 {
 	// NOTE:
 	//   we unbind later in WorldDrawer::GenerateIBLTextures() to save render
-	//   context switches (which are one of the slowest OpenGL operations!)
-	//   together with VP restoration
-	smOpaqFBO.Bind();
+        //   context switches (which are one of the slowest OpenGL operations!)
+        //   together with VP restoration
+#ifdef USE_METAL
+        // Metal path uses Begin/End instead of explicit FBO binding
+        smOpaqFBO.Begin(nullptr);
+#else
+        smOpaqFBO.Bind();
+#endif
 
 	glDisable(GL_BLEND);
 	glDisable(GL_LIGHTING);
@@ -686,8 +691,13 @@ void CShadowHandler::CreateShadows()
 
 	glShadeModel(GL_SMOOTH);
 
-	//revert to default, EnableColorOutput(true) is not enough
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        //revert to default, EnableColorOutput(true) is not enough
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+#ifdef USE_METAL
+        // finish encoding and commit
+        smOpaqFBO.End(nullptr);
+#endif
 }
 
 #ifndef USE_METAL

@@ -4,29 +4,78 @@
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#import <CoreVideo/CoreVideo.h>
 
 // Owns the Metal device and command queue for the lifetime of the app.
-static id<MTLDevice> metalDevice = nil;        // released in DestroyMetalContext
-static id<MTLCommandQueue> metalQueue = nil;   // released in DestroyMetalContext
+static id<MTLDevice>      metalDevice = nil;     // released in DestroyMetalContext
+static id<MTLCommandQueue> metalQueue = nil;     // released in DestroyMetalContext
+static CAMetalLayer*       metalLayer = nil;     // weak reference owned by SDL view
+static CVDisplayLinkRef    displayLink = nullptr;
 
-extern "C" void InitMetalContext(CAMetalLayer* layer)
+
+extern "C" bool InitMetalContext(CAMetalLayer* layer, int width, int height)
 {
-        // Device is created once and retained by this module
-        metalDevice = MTLCreateSystemDefaultDevice();
-        metalQueue = [metalDevice newCommandQueue];
+metalDevice = MTLCreateSystemDefaultDevice();
+if (metalDevice == nil) {
+NSLog(@"[InitMetalContext] failed to create Metal device");
+return false;
+}
+metalQueue = [metalDevice newCommandQueue];
+if (metalQueue == nil) {
+NSLog(@"[InitMetalContext] failed to create command queue");
+[metalDevice release];
+metalDevice = nil;
+return false;
+}
 
-        // Layer keeps an unretained reference; SDL owns the layer
-        [layer setDevice:metalDevice];
+metalLayer = layer;
+[metalLayer setDevice:metalDevice];
+[metalLayer setPixelFormat:MTLPixelFormatBGRA8Unorm];
+[metalLayer setFramebufferOnly:YES];
+[metalLayer setDrawableSize:CGSizeMake(width, height)];
+
+if (CVDisplayLinkCreateWithActiveCGDisplays(&displayLink) != kCVReturnSuccess) {
+NSLog(@"[InitMetalContext] failed to create display link");
+displayLink = nullptr;
+} else {
+CVDisplayLinkStart(displayLink);
+}
+
+return true;
+}
+
+extern "C" CAMetalDrawable* CreateDrawable()
+{
+if (metalLayer == nil)
+return nil;
+return [metalLayer nextDrawable];
+}
+
+extern "C" void SetMetalDrawableSize(int width, int height)
+{
+if (metalLayer != nil) {
+[metalLayer setDrawableSize:CGSizeMake(width, height)];
+}
 }
 
 extern "C" void DestroyMetalContext()
 {
-        // Release objects according to Objective-C ownership rules
-        [metalQueue release];
-        [metalDevice release];
+NSLog(@"[DestroyMetalContext] releasing Metal resources");
+if (displayLink != nullptr) {
+CVDisplayLinkStop(displayLink);
+CVDisplayLinkRelease(displayLink);
+displayLink = nullptr;
+}
 
-        metalQueue = nil;
-        metalDevice = nil;
+if (metalQueue != nil) {
+[metalQueue release];
+metalQueue = nil;
+}
+if (metalDevice != nil) {
+[metalDevice release];
+metalDevice = nil;
+}
+metalLayer = nil;
 }
 
 #endif

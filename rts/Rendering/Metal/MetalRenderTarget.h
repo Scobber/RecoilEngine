@@ -5,7 +5,7 @@
 #ifdef __OBJC__
 #import <Metal/Metal.h>
 #else
-class MTLTexture; class MTLRenderPassDescriptor;
+class MTLTexture; class MTLRenderPassDescriptor; class MTLCommandBuffer; class MTLRenderCommandEncoder;
 template <typename T> using id = T*;
 #endif
 
@@ -17,22 +17,25 @@ template <typename T> using id = T*;
  */
 class MetalRenderTarget {
 public:
-	MetalRenderTarget();
-	~MetalRenderTarget();
+        MetalRenderTarget();
+        ~MetalRenderTarget();
 
-	bool Init();
-	void Release();
+        bool Init();
+        void Release();
 
-	bool IsValid() const { return passDesc != nullptr; }
-	void Bind() const {}
-	void Unbind() const {}
+        bool IsValid() const { return passDesc != nullptr; }
 
-	void AttachTexture(id<MTLTexture> tex, bool depth);
+        // start and end a render pass; wrappers around Metal encoders
+        id<MTLRenderCommandEncoder> Begin(id<MTLCommandBuffer> buf);
+        void End(id<MTLCommandBuffer> buf);
+
+        void AttachTexture(id<MTLTexture> tex, bool depth);
 
 private:
-	id<MTLRenderPassDescriptor> passDesc = nullptr;
-	id<MTLTexture> colorTex = nullptr;
-	id<MTLTexture> depthTex = nullptr;
+        id<MTLRenderPassDescriptor> passDesc = nullptr;
+        id<MTLTexture> colorTex = nullptr;
+        id<MTLTexture> depthTex = nullptr;
+        id<MTLRenderCommandEncoder> activeEncoder = nullptr;
 };
 
 #endif // USE_METAL
