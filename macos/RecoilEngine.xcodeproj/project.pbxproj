@@ -4,13 +4,26 @@
 	objectVersion = 50;
 	objects = {
 
+/* Begin PBXFileReference section */
+        DB65714935EB4477B3957674 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+        D11E79963A204228B5EE45CC /* regenerate.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = regenerate.sh; sourceTree = "<group>"; };
+        8EAE1ED67F9A468D900012F2 /* xcode-build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = xcode-build.sh; sourceTree = "<group>"; };
+        BE8A64B59F0349E698606FED /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = CMakeLists.txt; path = ../CMakeLists.txt; sourceTree = "<group>"; };
+        78425D7ACADE4128BB93AA42 /* MSL */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MSL; path = ../cont/base/springcontent/shaders/MSL; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
 /* Begin PBXGroup section */
-	1F5731C126B040FD00BAEAD1 /* Project object main group */ = {
-		isa = PBXGroup;
-		children = (
-		);
-		sourceTree = "<group>";
-	};
+        1F5731C126B040FD00BAEAD1 /* Project object main group */ = {
+                isa = PBXGroup;
+                children = (
+                        DB65714935EB4477B3957674 /* README.md */,
+                        D11E79963A204228B5EE45CC /* regenerate.sh */,
+                        8EAE1ED67F9A468D900012F2 /* xcode-build.sh */,
+                        BE8A64B59F0349E698606FED /* CMakeLists.txt */,
+                        78425D7ACADE4128BB93AA42 /* MSL */,
+                );
+                sourceTree = "<group>";
+        };
 /* End PBXGroup section */
 
 /* Begin PBXLegacyTarget section */
