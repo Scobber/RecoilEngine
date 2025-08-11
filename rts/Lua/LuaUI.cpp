@@ -22,6 +22,7 @@
 #include "LuaWeaponDefs.h"
 #include "LuaScream.h"
 #include "LuaOpenGL.h"
+#include "LuaGraphics.h"
 #include "LuaUtils.h"
 #include "LuaVFS.h"
 #include "LuaVFSDownload.h"
@@ -158,10 +159,14 @@ CLuaUI::CLuaUI()
 	    !AddEntriesToTable(L, "Script",      LuaScream::PushEntries)         ||
 	    !AddEntriesToTable(L, "Spring",      LuaSyncedRead::PushEntries)     ||
 	    !AddEntriesToTable(L, "Spring",      LuaUnsyncedCtrl::PushEntries)   ||
-	    !AddEntriesToTable(L, "Spring",      LuaUnsyncedRead::PushEntries)   ||
-	    !AddEntriesToTable(L, "Spring",      LuaUICommand::PushEntries)      ||
-	    !AddEntriesToTable(L, "gl",          LuaOpenGL::PushEntries)         ||
-	    !AddEntriesToTable(L, "GL",          LuaConstGL::PushEntries)        ||
+            !AddEntriesToTable(L, "Spring",      LuaUnsyncedRead::PushEntries)   ||
+            !AddEntriesToTable(L, "Spring",      LuaUICommand::PushEntries)      ||
+#ifdef USE_METAL
+            !AddEntriesToTable(L, "gl",          LuaGraphics::PushEntries)       ||
+#else
+            !AddEntriesToTable(L, "gl",          LuaOpenGL::PushEntries)         ||
+#endif
+            !AddEntriesToTable(L, "GL",          LuaConstGL::PushEntries)        ||
 	    !AddEntriesToTable(L, "Engine",      LuaConstEngine::PushEntries)    ||
 	    !AddEntriesToTable(L, "Platform",    LuaConstPlatform::PushEntries)  ||
 	    !AddEntriesToTable(L, "Game",        LuaConstGame::PushEntries)      ||

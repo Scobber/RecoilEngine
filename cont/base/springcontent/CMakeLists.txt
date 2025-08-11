@@ -1,5 +1,6 @@
 file(GLOB_RECURSE ARB_SHADERS  CONFIGURE_DEPENDS "shaders/ARB/*.vp" "shaders/ARB/*.fp")
 file(GLOB_RECURSE GLSL_SHADERS CONFIGURE_DEPENDS "shaders/GLSL/*.glsl" "shaders/GLSL/*.lua")
+file(GLOB_RECURSE MSL_SHADERS  CONFIGURE_DEPENDS "shaders/MSL/*.metal")
 
 foreach(ITEM ${ARB_SHADERS})
    get_filename_component(ITEM_NAME ${ITEM} NAME)
@@ -9,6 +10,11 @@ endforeach()
 foreach(ITEM ${GLSL_SHADERS})
    get_filename_component(ITEM_NAME ${ITEM} NAME)
    list(APPEND FILES "shaders/GLSL/${ITEM_NAME}")
+endforeach()
+
+foreach(ITEM ${MSL_SHADERS})
+   get_filename_component(ITEM_NAME ${ITEM} NAME)
+   list(APPEND FILES "shaders/MSL/${ITEM_NAME}")
 endforeach()
 
 list(APPEND FILES

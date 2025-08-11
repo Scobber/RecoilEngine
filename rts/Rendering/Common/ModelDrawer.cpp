@@ -6,6 +6,10 @@
 #include "Rendering/Env/CubeMapHandler.h"
 #include "Rendering/LuaObjectDrawer.h"
 
+#ifdef USE_METAL
+#include "Rendering/Metal/MetalBuffer.h"
+#include "Rendering/Metal/MetalTexture.h"
+#endif
 #include "System/Misc/TracyDefs.h"
 
 void CModelDrawerConcept::InitStatic()
@@ -14,21 +18,33 @@ void CModelDrawerConcept::InitStatic()
 	if (initialized)
 		return;
 
-	cubeMapHandler.Init();
-	wireFrameMode = false;
+        cubeMapHandler.Init();
+        wireFrameMode = false;
 
-	lightHandler.Init(2U, configHandler->GetInt("MaxDynamicModelLights"));
+        lightHandler.Init(2U, configHandler->GetInt("MaxDynamicModelLights"));
 
-	deferredAllowed = configHandler->GetBool("AllowDeferredModelRendering");
+        deferredAllowed = configHandler->GetBool("AllowDeferredModelRendering");
 
-	// shared with FeatureDrawer!
-	geomBuffer = LuaObjectDrawer::GetGeometryBuffer();
-	deferredAllowed &= geomBuffer->Valid();
+        // shared with FeatureDrawer!
+        geomBuffer = LuaObjectDrawer::GetGeometryBuffer();
+        deferredAllowed &= geomBuffer->Valid();
 
-	IModelDrawerState::InitInstance<CModelDrawerStateGLSL>(MODEL_DRAWER_GLSL);
-	IModelDrawerState::InitInstance<CModelDrawerStateGL4 >(MODEL_DRAWER_GL4 );
+#ifdef USE_METAL
+        // Metal backend mirrors GL geometry buffers with explicit objects.
+        // These dummy instances ensure the Metal wrappers compile and mark
+        // spots where a full implementation would allocate resources.
+        static MetalBuffer dummyBuf;
+        static MetalTexture dummyTex;
+        dummyBuf.Generate(nullptr, 0);
+#endif
+#ifdef USE_METAL
+        (void)dummyTex;
+#endif
 
-	initialized = true;
+        IModelDrawerState::InitInstance<CModelDrawerStateGLSL>(MODEL_DRAWER_GLSL);
+        IModelDrawerState::InitInstance<CModelDrawerStateGL4 >(MODEL_DRAWER_GL4 );
+
+        initialized = true;
 }
 
 void CModelDrawerConcept::KillStatic(bool reload)
@@ -37,12 +53,20 @@ void CModelDrawerConcept::KillStatic(bool reload)
 	if (!initialized)
 		return;
 
-	cubeMapHandler.Free();
-	geomBuffer = nullptr;
+        cubeMapHandler.Free();
+        geomBuffer = nullptr;
 
-	for (int t = ModelDrawerTypes::MODEL_DRAWER_GLSL; t < ModelDrawerTypes::MODEL_DRAWER_CNT; ++t) {
-		IModelDrawerState::KillInstance(t);
-	}
+        for (int t = ModelDrawerTypes::MODEL_DRAWER_GLSL; t < ModelDrawerTypes::MODEL_DRAWER_CNT; ++t) {
+                IModelDrawerState::KillInstance(t);
+        }
 
-	initialized = false;
+#ifdef USE_METAL
+        // Release dummy resources created during initialization.
+        static MetalBuffer dummyBuf;
+        static MetalTexture dummyTex;
+        dummyBuf.Delete();
+        dummyTex.Release();
+#endif
+
+        initialized = false;
 }

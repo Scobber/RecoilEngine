@@ -9,7 +9,10 @@
 
 #include <array>
 
+#ifndef USE_METAL
+// Metal backend uses native APIs, skip GLAD includes
 #include <glad/glad.h>
+#endif
 
 #include "System/float3.h"
 #include "System/float4.h"

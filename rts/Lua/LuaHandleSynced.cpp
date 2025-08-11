@@ -28,6 +28,7 @@
 #include "LuaScream.h"
 #include "LuaMaterial.h"
 #include "LuaOpenGL.h"
+#include "LuaGraphics.h"
 #include "LuaVFS.h"
 #include "LuaZip.h"
 
@@ -137,9 +138,13 @@ bool CUnsyncedLuaHandle::Init(std::string code, const std::string& file)
 		if (!AddEntriesToTable(L, "Spring",         LuaSyncedRead::PushEntries        )) KILL
 		if (!AddEntriesToTable(L, "Spring",       LuaUnsyncedCtrl::PushEntries        )) KILL
 		if (!AddEntriesToTable(L, "Spring",       LuaUnsyncedRead::PushEntries        )) KILL
-		if (!AddEntriesToTable(L, "Spring",          LuaUICommand::PushEntries        )) KILL
-		if (!AddEntriesToTable(L, "gl",                 LuaOpenGL::PushEntries        )) KILL
-		if (!AddEntriesToTable(L, "GL",                LuaConstGL::PushEntries        )) KILL
+                if (!AddEntriesToTable(L, "Spring",          LuaUICommand::PushEntries        )) KILL
+#ifdef USE_METAL
+                if (!AddEntriesToTable(L, "gl",                 LuaGraphics::PushEntries      )) KILL
+#else
+                if (!AddEntriesToTable(L, "gl",                 LuaOpenGL::PushEntries        )) KILL
+#endif
+                if (!AddEntriesToTable(L, "GL",                LuaConstGL::PushEntries        )) KILL
 		if (!AddEntriesToTable(L, "Engine",        LuaConstEngine::PushEntries        )) KILL
 		if (!AddEntriesToTable(L, "Platform",      LuaConstPlatform::PushEntries      )) KILL
 		if (!AddEntriesToTable(L, "Game",            LuaConstGame::PushEntries        )) KILL

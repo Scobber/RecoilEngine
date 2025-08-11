@@ -3,6 +3,8 @@
 #ifndef LUA_GL_H
 #define LUA_GL_H
 
+#ifndef USE_METAL
+
 #include <vector>
 #include <string>
 #include <unordered_set>
@@ -172,18 +174,11 @@ class LuaOpenGL {
 		static int GetNumber(lua_State* L);
 		static int GetString(lua_State* L);
 
-		static int GetScreenViewTrans(lua_State* L);
-		static int GetViewSizes(lua_State* L);
-		static int GetViewRange(lua_State* L);
+                static int DrawMiniMap(lua_State* L);
 
-		static int DrawMiniMap(lua_State* L);
-		static int SlaveMiniMap(lua_State* L);
-		static int ConfigMiniMap(lua_State* L);
-
-		static int ResetState(lua_State* L);
-		static int ResetMatrices(lua_State* L);
-		static int Clear(lua_State* L);
-		static int SwapBuffers(lua_State* L);
+                static int ResetState(lua_State* L);
+                static int ResetMatrices(lua_State* L);
+                static int Clear(lua_State* L);
 
 		static int Lighting(lua_State* L);
 		static int ShadeModel(lua_State* L);
@@ -368,9 +363,11 @@ inline void LuaOpenGL::InitMatrixState(lua_State* L, const char* fn) {
 }
 
 inline void LuaOpenGL::CheckMatrixState(lua_State* L, const char* fn, int error) {
-	if (!GetLuaContextData(L)->glMatrixTracker.HasMatrixStateError())
-		return;
-	GetLuaContextData(L)->glMatrixTracker.HandleMatrixStateError(error, fn);
+        if (!GetLuaContextData(L)->glMatrixTracker.HasMatrixStateError())
+                return;
+        GetLuaContextData(L)->glMatrixTracker.HandleMatrixStateError(error, fn);
 }
 
-#endif /* LUA_UNITDEFS_H */
+#endif // !USE_METAL
+
+#endif /* LUA_GL_H */

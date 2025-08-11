@@ -16,6 +16,7 @@
 #include "Rendering/Textures/TextureFormat.h"
 #include "Rendering/GL/VBO.h"
 #include "Rendering/GL/TexBind.h"
+#include "Rendering/IRenderBackend.h"
 #include "System/Log/ILog.h"
 #include "System/Exceptions.h"
 #include "System/StringUtil.h"
@@ -121,37 +122,51 @@ bool CheckAvailableVideoModes()
 static bool GetVideoMemInfoNV(GLint* memInfo)
 {
 	RECOIL_DETAILED_TRACY_ZONE;
-	if (!GLAD_GL_NVX_gpu_memory_info)
-		return false;
+	#ifdef USE_METAL // Metal backend
+	// query VRAM via backend
+	return IRenderBackend::Get().GetVideoMemoryInfo(memInfo);
+	#else // OpenGL backend
+	if (!IRenderBackend::Get().HasExtension("GL_NVX_gpu_memory_info"))
+	return false;
 
-	glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &memInfo[0]);
-	glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &memInfo[1]);
+	IRenderBackend::Get().GetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &memInfo[0]);
+	IRenderBackend::Get().GetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &memInfo[1]);
 	return true;
+#endif
 }
 
 static bool GetVideoMemInfoATI(GLint* memInfo)
 {
 	RECOIL_DETAILED_TRACY_ZONE;
-	if (!GLAD_GL_ATI_meminfo)
-		return false;
+	#ifdef USE_METAL // Metal backend
+	// query VRAM via backend
+	return IRenderBackend::Get().GetVideoMemoryInfo(memInfo);
+	#else // OpenGL backend
+	if (!IRenderBackend::Get().HasExtension("GL_ATI_meminfo"))
+	return false;
 
-	// these are not disjoint, don't sum
+// these are not disjoint, don't sum
 	for (uint32_t param: {/*GL_VBO_FREE_MEMORY_ATI,*/ GL_TEXTURE_FREE_MEMORY_ATI/*, GL_RENDERBUFFER_FREE_MEMORY_ATI*/}) {
-		glGetIntegerv(param, &memInfo[0]);
+	IRenderBackend::Get().GetIntegerv(param, &memInfo[0]);
 
-		memInfo[4] += (memInfo[0] + memInfo[2]); // total main plus aux. memory free in pool
-		memInfo[5] += (memInfo[1] + memInfo[3]); // largest main plus aux. free block in pool
-	}
+	memInfo[4] += (memInfo[0] + memInfo[2]); // total main plus aux. memory free in pool
+	memInfo[5] += (memInfo[1] + memInfo[3]); // largest main plus aux. free block in pool
+}
 
 	memInfo[0] = memInfo[4]; // return the VBO/RBO/TEX free sum
 	memInfo[1] = memInfo[4]; // sic, just assume total >= free
 	return true;
+#endif
 }
 
 static bool GetVideoMemInfoMESA(GLint* memInfo)
 {
 	RECOIL_DETAILED_TRACY_ZONE;
+	#ifdef USE_METAL // Metal backend
+	return IRenderBackend::Get().GetVideoMemoryInfo(memInfo);
+	#else // OpenGL backend
 	return GLX::GetVideoMemInfoMESA(memInfo);
+#endif
 }
 #endif
 
@@ -181,7 +196,7 @@ bool GetAvailableVideoRAM(GLint* memory, const char* glVendor)
 	memory[0] = std::max(memInfo[0], memInfo[1]);
 	memory[1] = std::min(memInfo[0], memInfo[1]);
 	return true;
-	#endif
+#endif
 }
 
 

@@ -1,5 +1,6 @@
 /* This file is part of the Spring engine (GPL v2 or later), see LICENSE.html */
 
+#ifndef USE_METAL
 
 // TODO:
 // - go back to counting matrix push/pops (just for modelview?)
@@ -19,6 +20,7 @@
 #include "lib/fmt/format.h"
 
 #include "LuaOpenGL.h"
+#include "LuaGraphics.h"
 
 #include "LuaInclude.h"
 #include "LuaContextData.h"
@@ -169,9 +171,7 @@ std::unordered_map<GLenum, std::string> LuaOpenGL::fixedStateEnumToString = {
 		FillFixedStateEnumToString(GL_FILL),
 };
 #undef FillFixedStateEnumToString
-std::string LuaOpenGL::fixedStateEnumToStringUnk;
 
-static float3 screenViewTrans;
 
 std::vector<LuaOpenGL::OcclusionQuery*> LuaOpenGL::occlusionQueries;
 
@@ -279,24 +279,18 @@ void LuaOpenGL::Free()
 
 bool LuaOpenGL::PushEntries(lua_State* L)
 {
-	LuaOpenGLUtils::ResetState();
+        LuaOpenGLUtils::ResetState();
+        LuaGraphics::PushEntries(L);
 
-	REGISTER_LUA_CFUNC(HasExtension);
-	REGISTER_LUA_CFUNC(GetNumber);
-	REGISTER_LUA_CFUNC(GetString);
+        REGISTER_LUA_CFUNC(HasExtension);
+        REGISTER_LUA_CFUNC(GetNumber);
+        REGISTER_LUA_CFUNC(GetString);
 
-	REGISTER_LUA_CFUNC(GetScreenViewTrans);
-	REGISTER_LUA_CFUNC(GetViewSizes);
-	REGISTER_LUA_CFUNC(GetViewRange);
+        REGISTER_LUA_CFUNC(DrawMiniMap);
 
-	REGISTER_LUA_CFUNC(DrawMiniMap);
-	REGISTER_LUA_CFUNC(SlaveMiniMap);
-	REGISTER_LUA_CFUNC(ConfigMiniMap);
-
-	REGISTER_LUA_CFUNC(ResetState);
-	REGISTER_LUA_CFUNC(ResetMatrices);
-	REGISTER_LUA_CFUNC(Clear);
-	REGISTER_LUA_CFUNC(SwapBuffers);
+        REGISTER_LUA_CFUNC(ResetState);
+        REGISTER_LUA_CFUNC(ResetMatrices);
+        REGISTER_LUA_CFUNC(Clear);
 	REGISTER_LUA_CFUNC(Lighting);
 	REGISTER_LUA_CFUNC(ShadeModel);
 	REGISTER_LUA_CFUNC(Scissor);
@@ -1202,91 +1196,6 @@ int LuaOpenGL::GetString(lua_State* L)
 }
 
 
-/***
- * @function gl.GetScreenViewTrans
- * @return number x
- * @return number y
- * @return number z
- */
-int LuaOpenGL::GetScreenViewTrans(lua_State* L)
-{
-	lua_pushnumber(L, screenViewTrans.x);
-	lua_pushnumber(L, screenViewTrans.y);
-	lua_pushnumber(L, screenViewTrans.z);
-	return 3;
-}
-
-
-/***
- * @function gl.GetViewSizes
- * @return number x
- * @return number y
- */
-int LuaOpenGL::GetViewSizes(lua_State* L)
-{
-	lua_pushnumber(L, globalRendering->viewSizeX);
-	lua_pushnumber(L, globalRendering->viewSizeY);
-	return 2;
-}
-
-
-/***
- * @function gl.GetViewRange
- * @return number nearPlaneDist
- * @return number farPlaneDist
- * @return number minViewRange
- * @return number maxViewRange
- */
-int LuaOpenGL::GetViewRange(lua_State* L)
-{
-	constexpr int minCamType = CCamera::CAMTYPE_PLAYER;
-	constexpr int maxCamType = CCamera::CAMTYPE_ACTIVE;
-
-	const CCamera* cam = CCameraHandler::GetCamera(std::clamp(luaL_optint(L, 1, CCamera::CAMTYPE_ACTIVE), minCamType, maxCamType));
-
-	lua_pushnumber(L, cam->GetNearPlaneDist());
-	lua_pushnumber(L, cam->GetFarPlaneDist());
-	lua_pushnumber(L, globalRendering->minViewRange);
-	lua_pushnumber(L, globalRendering->maxViewRange);
-	return 4;
-}
-
-
-/***
- * @function gl.SlaveMiniMap
- * @param newMode boolean
- */
-int LuaOpenGL::SlaveMiniMap(lua_State* L)
-{
-	if (minimap == nullptr)
-		return 0;
-
-//	CheckDrawingEnabled(L, __func__);
-	minimap->SetSlaveMode(luaL_checkboolean(L, 1));
-	return 0;
-}
-
-
-/***
- * @function gl.ConfigMiniMap
- * @param px integer
- * @param py integer
- * @param sx integer
- * @param sy integer
- */
-int LuaOpenGL::ConfigMiniMap(lua_State* L)
-{
-	if (minimap == nullptr)
-		return 0;
-
-	const int px = luaL_checkint(L, 1);
-	const int py = luaL_checkint(L, 2);
-	const int sx = luaL_checkint(L, 3);
-	const int sy = luaL_checkint(L, 4);
-
-	minimap->SetGeometry(px, py, sx, sy);
-	return 0;
-}
 
 
 /***
@@ -5120,24 +5029,6 @@ int LuaOpenGL::Clear(lua_State* L)
 	}
 
 	glClear(bits);
-	return 0;
-}
-
-/***
- * @function gl.SwapBuffers
- */
-int LuaOpenGL::SwapBuffers(lua_State* L)
-{
-	CheckDrawingEnabled(L, __func__);
-
-	// only meant for frame-limited LuaMenu's that want identical content in both buffers
-	if (!CLuaHandle::GetHandle(L)->PersistOnReload())
-		return 0;
-
-	globalRendering->SwapBuffers(true, true);
-	return 0;
-}
-
 /******************************************************************************/
 
 /***
@@ -7119,3 +7010,4 @@ int LuaOpenGL::PopDebugGroup(lua_State* L) {
 
 /******************************************************************************/
 /******************************************************************************/
+#endif // !USE_METAL

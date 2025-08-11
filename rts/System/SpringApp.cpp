@@ -5,6 +5,17 @@
 #include <chrono>
 
 #include <SDL.h>
+#ifdef USE_METAL
+#include <SDL_metal.h>
+
+// SDL creates and owns the view; we keep weak references for context setup
+static SDL_MetalView metalView = nullptr;
+static struct CAMetalLayer* metalLayer = nullptr;
+
+// implemented in MetalContext.mm
+extern "C" void InitMetalContext(struct CAMetalLayer* layer);
+extern "C" void DestroyMetalContext();
+#endif
 #include <System/GflagsExt.h>
 
 #ifdef _WIN32
@@ -422,9 +433,19 @@ bool SpringApp::InitWindow(const char* title)
 	// SDL will cause a creation of gpu-driver thread that will clone its name from the starting threads (= this one = mainthread)
 	Threading::SetThreadName("gpu-driver");
 
-	// raises an error-prompt in case of failure
-	if (!globalRendering->CreateWindowAndContext(title))
-		return false;
+        // raises an error-prompt in case of failure
+#ifndef USE_METAL
+        if (!globalRendering->CreateWindowAndContext(title))
+                return false;
+#else
+        if (!globalRendering->CreateWindowAndContext(title))
+                return false;
+
+        metalView = SDL_Metal_CreateView(globalRendering->GetWindow());
+        // layer is owned by the SDL view; pointer remains valid until SDL_Metal_DestroyView
+        metalLayer = (struct CAMetalLayer*)SDL_Metal_GetLayer(metalView);
+        InitMetalContext(metalLayer);
+#endif
 
 	// Something in SDL_SetVideoMode (OpenGL drivers?) messes with the FPU control word.
 	// Set single precision floating point math.
@@ -1037,11 +1058,21 @@ void SpringApp::Kill(bool fromRun)
 	gs->Kill();
 	gu->Kill();
 
-	LOG("[SpringApp::%s][7]", __func__);
+        LOG("[SpringApp::%s][7]", __func__);
 
-	CGlobalRendering::KillStatic();
-	CBitmap::KillPool();
-	CLuaSocketRestrictions::KillStatic();
+#ifdef USE_METAL
+        // release Metal resources prior to tearing down the SDL window
+        DestroyMetalContext();
+        if (metalView != nullptr) {
+                SDL_Metal_DestroyView(metalView);
+                metalView = nullptr;
+                metalLayer = nullptr;
+        }
+#endif
+
+        CGlobalRendering::KillStatic();
+        CBitmap::KillPool();
+        CLuaSocketRestrictions::KillStatic();
 
 	// also gets rid of configHandler
 	FileSystemInitializer::Cleanup();

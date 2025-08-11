@@ -1,0 +1,92 @@
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXGroup section */
+	1F5731C126B040FD00BAEAD1 /* Project object main group */ = {
+		isa = PBXGroup;
+		children = (
+		);
+		sourceTree = "<group>";
+	};
+/* End PBXGroup section */
+
+/* Begin PBXLegacyTarget section */
+	1F5731C226B040FD00BAEAD1 /* RecoilEngine */ = {
+		isa = PBXLegacyTarget;
+		buildArgumentsString = "";
+		buildConfigurationList = 1F5731C426B040FD00BAEAD1 /* Build configuration list for PBXLegacyTarget \"RecoilEngine\" */;
+		buildPhases = (
+		);
+		buildToolPath = "../xcode-build.sh";
+		buildWorkingDirectory = "..";
+		dependencies = (
+		);
+		name = RecoilEngine;
+		passBuildSettingsInEnvironment = 1;
+		productName = RecoilEngine;
+	};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXProject section */
+	1F5731C026B040FD00BAEAD1 /* Project object */ = {
+		isa = PBXProject;
+		attributes = {
+			LastUpgradeCheck = 1300;
+		};
+		buildConfigurationList = 1F5731C326B040FD00BAEAD1 /* Build configuration list for PBXProject \"RecoilEngine\" */;
+		compatibilityVersion = "Xcode 13.0";
+	developmentRegion = en;
+	hasScannedForEncodings = 0;
+	knownRegions = (
+	en,
+	);
+	mainGroup = 1F5731C126B040FD00BAEAD1;
+	productRefGroup = 1F5731C126B040FD00BAEAD1;
+	projectDirPath = "";
+	projectRoot = "";
+	targets = (
+	1F5731C226B040FD00BAEAD1 /* RecoilEngine */,
+	);
+	};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+	1F5731C526B040FD00BAEAD1 /* Debug-Metal */ = {
+		isa = XCBuildConfiguration;
+		buildSettings = {};
+		name = "Debug-Metal";
+	};
+	1F5731C626B040FD00BAEAD1 /* Release-Metal */ = {
+		isa = XCBuildConfiguration;
+		buildSettings = {};
+		name = "Release-Metal";
+	};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+	1F5731C326B040FD00BAEAD1 /* Build configuration list for PBXProject \"RecoilEngine\" */ = {
+		isa = XCConfigurationList;
+		buildConfigurations = (
+			1F5731C526B040FD00BAEAD1 /* Debug-Metal */,
+			1F5731C626B040FD00BAEAD1 /* Release-Metal */,
+		);
+		defaultConfigurationIsVisible = 0;
+		defaultConfigurationName = "Release-Metal";
+	};
+	1F5731C426B040FD00BAEAD1 /* Build configuration list for PBXLegacyTarget \"RecoilEngine\" */ = {
+		isa = XCConfigurationList;
+		buildConfigurations = (
+			1F5731C526B040FD00BAEAD1 /* Debug-Metal */,
+			1F5731C626B040FD00BAEAD1 /* Release-Metal */,
+		);
+		defaultConfigurationIsVisible = 0;
+		defaultConfigurationName = "Release-Metal";
+	};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 1F5731C026B040FD00BAEAD1 /* Project object */;
+}

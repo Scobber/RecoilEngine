@@ -573,8 +573,11 @@ bool CGlobalRendering::CreateWindowAndContext(const char* title)
 	if ((glContext = CreateGLContext(minCtx)) == nullptr)
 		return false;
 
-	gladLoadGL();
-	GLX::Load(sdlWindow);
+        #ifndef USE_METAL
+        // Metal backend provides its own initialization, skip GLAD/GLX
+        gladLoadGL();
+        GLX::Load(sdlWindow);
+        #endif
 
 	if (!CheckGLContextVersion(minCtx)) {
 		int ctxProfile = 0;

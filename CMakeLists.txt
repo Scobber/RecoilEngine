@@ -21,9 +21,12 @@ option(INSTALL_PORTABLE "Make a portable installation (instead of regular system
 # Allow to set PREFER_STATIC_LIBS from env, defaults to false
 option(PREFER_STATIC_LIBS "Prefer static libraries when linking deps" $ENV{PREFER_STATIC_LIBS})
 
+# toggle Metal backend for macOS builds
+option(USE_METAL "Enable Metal backend" OFF)
+
 # dummy so that qtcreator shows all files (even those of windows)
 if(CMAKE_VERSION VERSION_GREATER 3.1.2)
-	add_library(platform_sources EXCLUDE_FROM_ALL "")
+        add_library(platform_sources EXCLUDE_FROM_ALL "")
 endif()
 
 # includes rts/build/cmake/Util.cmake & rts/build/cmake/PreferStaticLibs.cmake
@@ -98,6 +101,24 @@ if    (APPLE)
 else  (APPLE)
 	set(MACOSX_BUNDLE FALSE)
 endif (APPLE)
+
+### Metal backend
+if(APPLE AND USE_METAL)
+  # locate Apple's Metal frameworks required for rendering
+  find_library(METAL_LIBRARY Metal)
+  find_library(METALKIT_LIBRARY MetalKit)
+  find_library(QUARTZCORE_LIBRARY QuartzCore)
+  find_library(COCOA_LIBRARY Cocoa)
+
+  # expose compile-time switch for Metal features
+  add_definitions(-DUSE_METAL)
+
+  # ensure Objective-C++ sources compile with the correct language
+  set_source_files_properties(
+    rts/System/Platform/Mac/SDLMain.m
+    PROPERTIES LANGUAGE OBJCXX
+  )
+endif()
 
 ### Compiler flags and defines based on build type
 include(TestCXXFlags)

@@ -17,6 +17,7 @@
 #include "LuaScream.h"
 #include "LuaSyncedRead.h"
 #include "LuaOpenGL.h"
+#include "LuaGraphics.h"
 #include "LuaUtils.h"
 #include "LuaVFS.h"
 #include "LuaIO.h"
@@ -111,11 +112,15 @@ CLuaIntro::CLuaIntro()
 	    !AddEntriesToTable(L, "VFS",       LuaVFS::PushUnsynced)                ||
 	    !AddEntriesToTable(L, "VFS",       LuaZipFileReader::PushUnsynced)      ||
 	    !AddEntriesToTable(L, "VFS",       LuaZipFileWriter::PushUnsynced)      ||
-	    !AddEntriesToTable(L, "VFS",         LuaArchive::PushEntries)           ||
-	    !AddEntriesToTable(L, "Script",      LuaScream::PushEntries)            ||
-	    // !AddEntriesToTable(L, "Script",      LuaInterCall::PushEntriesUnsynced) ||
-	    !AddEntriesToTable(L, "gl",          LuaOpenGL::PushEntries)            ||
-	    !AddEntriesToTable(L, "GL",          LuaConstGL::PushEntries)           ||
+            !AddEntriesToTable(L, "VFS",         LuaArchive::PushEntries)           ||
+            !AddEntriesToTable(L, "Script",      LuaScream::PushEntries)            ||
+            // !AddEntriesToTable(L, "Script",      LuaInterCall::PushEntriesUnsynced) ||
+#ifdef USE_METAL
+            !AddEntriesToTable(L, "gl",          LuaGraphics::PushEntries)          ||
+#else
+            !AddEntriesToTable(L, "gl",          LuaOpenGL::PushEntries)            ||
+#endif
+            !AddEntriesToTable(L, "GL",          LuaConstGL::PushEntries)           ||
 	    !AddEntriesToTable(L, "Engine",      LuaConstEngine::PushEntries)       ||
 	    !AddEntriesToTable(L, "Platform",    LuaConstPlatform::PushEntries)       ||
 	    !AddEntriesToTable(L, "Game",        LuaConstGame::PushEntries)         ||

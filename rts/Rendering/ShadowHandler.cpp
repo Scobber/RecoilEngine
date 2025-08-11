@@ -15,11 +15,14 @@
 #include "Rendering/Units/UnitDrawer.h"
 #include "Rendering/Env/GrassDrawer.h"
 #include "Rendering/Env/ISky.h"
-#include "Rendering/GL/FBO.h"
+#ifndef USE_METAL
 #include "Rendering/GL/myGL.h"
+#include "Rendering/GL/RenderBuffers.h"
+#else
+#include "Rendering/Metal/MetalTexture.h"
+#endif
 #include "Rendering/Shaders/ShaderHandler.h"
 #include "Rendering/Shaders/Shader.h"
-#include "Rendering/GL/RenderBuffers.h"
 #include "System/Config/ConfigHandler.h"
 #include "System/EventHandler.h"
 #include "System/Matrix44f.h"
@@ -134,11 +137,15 @@ void CShadowHandler::Update()
 	SetShadowCamera(shadCam);
 }
 
+#ifndef USE_METAL
 void CShadowHandler::SaveShadowMapTextures() const
 {
-	glSaveTexture(shadowDepthTexture, fmt::format("smDepth_{}.png", globalRendering->drawFrame).c_str());
-	glSaveTexture(shadowColorTexture, fmt::format("smColor_{}.png", globalRendering->drawFrame).c_str());
+        glSaveTexture(shadowDepthTexture, fmt::format("smDepth_{}.png", globalRendering->drawFrame).c_str());
+        glSaveTexture(shadowColorTexture, fmt::format("smColor_{}.png", globalRendering->drawFrame).c_str());
 }
+#else
+void CShadowHandler::SaveShadowMapTextures() const {}
+#endif
 
 void CShadowHandler::DrawFrustumDebug() const
 {
@@ -176,16 +183,22 @@ void CShadowHandler::DrawFrustumDebug() const
 }
 
 void CShadowHandler::FreeFBOAndTextures() {
-	if (smOpaqFBO.IsValid()) {
-		smOpaqFBO.Bind();
-		smOpaqFBO.DetachAll();
-		smOpaqFBO.Unbind();
-	}
+#ifdef USE_METAL
+        smOpaqFBO.Release();
+        shadowDepthTexture = nullptr;
+        shadowColorTexture = nullptr;
+#else
+        if (smOpaqFBO.IsValid()) {
+                smOpaqFBO.Bind();
+                smOpaqFBO.DetachAll();
+                smOpaqFBO.Unbind();
+        }
 
-	smOpaqFBO.Kill();
+        smOpaqFBO.Kill();
 
-	glDeleteTextures(1, &shadowDepthTexture); shadowDepthTexture = 0;
-	glDeleteTextures(1, &shadowColorTexture); shadowColorTexture = 0;
+        glDeleteTextures(1, &shadowDepthTexture); shadowDepthTexture = 0;
+        glDeleteTextures(1, &shadowColorTexture); shadowColorTexture = 0;
+#endif
 }
 
 
@@ -324,114 +337,124 @@ void CShadowHandler::LoadShadowGenShaders()
 
 
 
+#ifdef USE_METAL
 bool CShadowHandler::InitFBOAndTextures()
 {
-	//create dummy textures / FBO in case shadowConfig is 0
-	const int realShTexSize = shadowConfig > 0 ? shadowMapSize : 1;
-
-	// smOpaqFBO is no-op constructed, has to be initialized manually
-	smOpaqFBO.Init(false);
-
-	if (!smOpaqFBO.IsValid()) {
-		LOG_L(L_ERROR, "[%s] framebuffer not valid", __func__);
-		return false;
-	}
-
-	// TODO: add bit depth?
-	static constexpr struct {
-		GLint clampMode;
-		GLint filterMode;
-		const char* name;
-	} presets[] = {
-		{GL_CLAMP_TO_BORDER, GL_LINEAR , "SHADOW-BEST"  },
-		{GL_CLAMP_TO_EDGE  , GL_NEAREST, "SHADOW-COMPAT"},
-	};
-
-	static constexpr float one[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-	bool status = false;
-	for (const auto& preset : presets)
-	{
-		if (FBO::GetCurrentBoundFBO() == smOpaqFBO.GetId())
-			smOpaqFBO.DetachAll();
-
-		//depth
-		glDeleteTextures(1, &shadowDepthTexture);
-		glGenTextures(1, &shadowDepthTexture);
-		glBindTexture(GL_TEXTURE_2D, shadowDepthTexture);
-
-		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, one);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, preset.clampMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, preset.clampMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, preset.filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, preset.filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); //no mips
-
-		const int depthBits = std::min(globalRendering->supportDepthBufferBitDepth, 24);
-		const GLint depthFormat = CGlobalRendering::DepthBitsToFormat(depthBits);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
-		glTexImage2D(GL_TEXTURE_2D, 0, depthFormat, realShTexSize, realShTexSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		/// color
-		glDeleteTextures(1, &shadowColorTexture);
-		glGenTextures(1, &shadowColorTexture);
-		glBindTexture(GL_TEXTURE_2D, shadowColorTexture);
-
-		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, one);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, preset.clampMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, preset.clampMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, preset.filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, preset.filterMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); //no mips
-		// TODO: Figure out if mips make sense here.
-
-		if (static_cast<bool>(shadowColorMode)) {
-			// seems like GL_RGB8 has enough precision
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, realShTexSize, realShTexSize, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-			static constexpr GLint swizzleMask[] = { GL_RED, GL_GREEN, GL_BLUE, GL_ONE };
-			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-
-		}
-		else {
-			// Conserve VRAM
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, realShTexSize, realShTexSize, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-			static constexpr GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
-			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-		}
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		// Mesa complains about an incomplete FBO if calling Bind before TexImage (?)
-		smOpaqFBO.Bind();
-		smOpaqFBO.AttachTexture(shadowDepthTexture, GL_TEXTURE_2D, GL_DEPTH_ATTACHMENT);
-		smOpaqFBO.AttachTexture(shadowColorTexture, GL_TEXTURE_2D, GL_COLOR_ATTACHMENT0);
-
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-		// test the FBO
-		status = smOpaqFBO.CheckStatus(preset.name);
-
-		if (status) //exit on the first occasion
-			break;
-	}
-
-	glClearDepth(1.0f);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	EnableColorOutput(true);
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	smOpaqFBO.Unbind();
-
-	// revert to FBO = 0 default
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-	return status;
+        // Metal path: allocate textures and render target via wrapper.
+        smOpaqFBO.Init();
+        shadowDepthTexture = nullptr;
+        shadowColorTexture = nullptr;
+        return smOpaqFBO.IsValid();
 }
+#else
+bool CShadowHandler::InitFBOAndTextures()
+{
+        //create dummy textures / FBO in case shadowConfig is 0
+        const int realShTexSize = shadowConfig > 0 ? shadowMapSize : 1;
+
+        // smOpaqFBO is no-op constructed, has to be initialized manually
+        smOpaqFBO.Init(false);
+
+        if (!smOpaqFBO.IsValid()) {
+                LOG_L(L_ERROR, "[%s] framebuffer not valid", __func__);
+                return false;
+        }
+
+        // TODO: add bit depth?
+        static constexpr struct {
+                GLint clampMode;
+                GLint filterMode;
+                const char* name;
+        } presets[] = {
+                {GL_CLAMP_TO_BORDER, GL_LINEAR , "SHADOW-BEST"  },
+                {GL_CLAMP_TO_EDGE  , GL_NEAREST, "SHADOW-COMPAT"},
+        };
+
+        static constexpr float one[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+        bool status = false;
+        for (const auto& preset : presets)
+        {
+                if (FBO::GetCurrentBoundFBO() == smOpaqFBO.GetId())
+                        smOpaqFBO.DetachAll();
+
+                //depth
+                glDeleteTextures(1, &shadowDepthTexture);
+                glGenTextures(1, &shadowDepthTexture);
+                glBindTexture(GL_TEXTURE_2D, shadowDepthTexture);
+
+                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, one);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, preset.clampMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, preset.clampMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, preset.filterMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, preset.filterMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); //no mips
+
+                const int depthBits = std::min(globalRendering->supportDepthBufferBitDepth, 24);
+                const GLint depthFormat = CGlobalRendering::DepthBitsToFormat(depthBits);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
+                glTexImage2D(GL_TEXTURE_2D, 0, depthFormat, realShTexSize, realShTexSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                /// color
+                glDeleteTextures(1, &shadowColorTexture);
+                glGenTextures(1, &shadowColorTexture);
+                glBindTexture(GL_TEXTURE_2D, shadowColorTexture);
+
+                glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, one);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, preset.clampMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, preset.clampMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, preset.filterMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, preset.filterMode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0); //no mips
+
+                if (static_cast<bool>(shadowColorMode)) {
+                        // seems like GL_RGB8 has enough precision
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, realShTexSize, realShTexSize, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+                        static constexpr GLint swizzleMask[] = { GL_RED, GL_GREEN, GL_BLUE, GL_ONE };
+                        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
+                }
+                else {
+                        // Conserve VRAM
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, realShTexSize, realShTexSize, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+                        static constexpr GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+                        glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+                }
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                // Mesa complains about an incomplete FBO if calling Bind before TexImage (?)
+                smOpaqFBO.Bind();
+                smOpaqFBO.AttachTexture(shadowDepthTexture, GL_TEXTURE_2D, GL_DEPTH_ATTACHMENT);
+                smOpaqFBO.AttachTexture(shadowColorTexture, GL_TEXTURE_2D, GL_COLOR_ATTACHMENT0);
+
+                glDrawBuffer(GL_COLOR_ATTACHMENT0);
+                glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+                // test the FBO
+                status = smOpaqFBO.CheckStatus(preset.name);
+
+                if (status)
+                        break;
+        }
+
+        glClearDepth(1.0f);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        EnableColorOutput(true);
+        glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        smOpaqFBO.Unbind();
+
+        // revert to FBO = 0 default
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+        return status;
+}
+#endif
 
 void CShadowHandler::DrawShadowPasses()
 {
@@ -585,43 +608,48 @@ void CShadowHandler::SetShadowCamera(CCamera* shadowCam)
 }
 
 
+#ifndef USE_METAL
 void CShadowHandler::SetupShadowTexSampler(unsigned int texUnit, bool enable) const
 {
-	glActiveTexture(texUnit);
-	glBindTexture(GL_TEXTURE_2D, shadowDepthTexture);
+        glActiveTexture(texUnit);
+        glBindTexture(GL_TEXTURE_2D, shadowDepthTexture);
 
-	// support FFP context
-	if (enable)
-		glEnable(GL_TEXTURE_2D);
+        // support FFP context
+        if (enable)
+                glEnable(GL_TEXTURE_2D);
 
-	SetupShadowTexSamplerRaw();
+        SetupShadowTexSamplerRaw();
 }
 
 void CShadowHandler::SetupShadowTexSamplerRaw() const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
-	// glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
-	// glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_ALPHA);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
 }
 
 void CShadowHandler::ResetShadowTexSampler(unsigned int texUnit, bool disable) const
 {
-	glActiveTexture(texUnit);
-	glBindTexture(GL_TEXTURE_2D, 0);
+        glActiveTexture(texUnit);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-	if (disable)
-		glDisable(GL_TEXTURE_2D);
+        if (disable)
+                glDisable(GL_TEXTURE_2D);
 
-	ResetShadowTexSamplerRaw();
+        ResetShadowTexSamplerRaw();
 }
 
 void CShadowHandler::ResetShadowTexSamplerRaw() const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_LUMINANCE);
 }
+#else
+void CShadowHandler::SetupShadowTexSampler(unsigned int, bool) const {}
+void CShadowHandler::SetupShadowTexSamplerRaw() const {}
+void CShadowHandler::ResetShadowTexSampler(unsigned int, bool) const {}
+void CShadowHandler::ResetShadowTexSamplerRaw() const {}
+#endif
 
 
 void CShadowHandler::CreateShadows()
@@ -662,13 +690,17 @@ void CShadowHandler::CreateShadows()
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 }
 
+#ifndef USE_METAL
 void CShadowHandler::EnableColorOutput(bool enable) const
 {
-	assert(FBO::GetCurrentBoundFBO() == smOpaqFBO.GetId());
+        assert(FBO::GetCurrentBoundFBO() == smOpaqFBO.GetId());
 
-	const GLboolean b = static_cast<GLboolean>(enable);
-	glColorMask(b, b, b, GL_FALSE);
+        const GLboolean b = static_cast<GLboolean>(enable);
+        glColorMask(b, b, b, GL_FALSE);
 }
+#else
+void CShadowHandler::EnableColorOutput(bool) const {}
+#endif
 
 
 

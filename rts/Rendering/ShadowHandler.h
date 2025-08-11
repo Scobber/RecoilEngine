@@ -6,7 +6,11 @@
 #include <array>
 #include <limits>
 
+#ifdef USE_METAL
+#include "Rendering/Metal/MetalRenderTarget.h"
+#else
 #include "Rendering/GL/FBO.h"
+#endif
 #include "System/float4.h"
 #include "System/Matrix44f.h"
 
@@ -18,9 +22,13 @@ class CCamera;
 class CShadowHandler
 {
 public:
-	CShadowHandler()
-		:smOpaqFBO(true)
-	{}
+        CShadowHandler()
+#ifdef USE_METAL
+                :smOpaqFBO()
+#else
+                :smOpaqFBO(true)
+#endif
+        {}
 
 	void Init();
 	void Kill();
@@ -80,8 +88,14 @@ public:
 
 	const float4& GetShadowParams() const { return shadowTexProjCenter; }
 
-	uint32_t GetShadowTextureID() const { return shadowDepthTexture; }
-	uint32_t GetColorTextureID() const { return shadowColorTexture; }
+#ifndef USE_METAL
+        uint32_t GetShadowTextureID() const { return shadowDepthTexture; }
+        uint32_t GetColorTextureID() const { return shadowColorTexture; }
+#else
+        // Metal path returns actual texture objects instead of integer IDs.
+        id<MTLTexture> GetShadowTexture() const { return shadowDepthTexture; }
+        id<MTLTexture> GetColorTexture() const { return shadowColorTexture; }
+#endif
 
 	static bool ShadowsInitialized() { return firstInit; }
 	static bool ShadowsSupported() { return shadowsSupported; }
@@ -138,10 +152,15 @@ private:
 	CMatrix44f projMatrix[2];
 	CMatrix44f viewMatrix[2];
 
-	uint32_t shadowDepthTexture;
-	uint32_t shadowColorTexture;
-
-	FBO smOpaqFBO;
+#ifdef USE_METAL
+        id<MTLTexture> shadowDepthTexture;
+        id<MTLTexture> shadowColorTexture;
+        MetalRenderTarget smOpaqFBO;
+#else
+        uint32_t shadowDepthTexture;
+        uint32_t shadowColorTexture;
+        FBO smOpaqFBO;
+#endif
 
 	/// xmid, ymid, p17, p18
 	static constexpr float4 shadowTexProjCenter = {

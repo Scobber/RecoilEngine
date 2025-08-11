@@ -10,6 +10,7 @@
 #include "LuaConstPlatform.h"
 #include "LuaIO.h"
 #include "LuaOpenGL.h"
+#include "LuaGraphics.h"
 #include "LuaScream.h"
 #include "LuaUtils.h"
 #include "LuaUnitDefs.h"
@@ -119,9 +120,13 @@ CLuaMenu::CLuaMenu()
 		!AddEntriesToTable(L, "VFS",       LuaVFS::PushUnsynced)           ||
 		!AddEntriesToTable(L, "VFS",       LuaZipFileReader::PushUnsynced) ||
 		!AddEntriesToTable(L, "VFS",       LuaZipFileWriter::PushUnsynced) ||
-		!AddEntriesToTable(L, "VFS",       LuaArchive::PushEntries)        ||
-		!AddEntriesToTable(L, "gl",        LuaOpenGL::PushEntries)         ||
-		!AddEntriesToTable(L, "GL",        LuaConstGL::PushEntries)        ||
+                !AddEntriesToTable(L, "VFS",       LuaArchive::PushEntries)        ||
+#ifdef USE_METAL
+                !AddEntriesToTable(L, "gl",        LuaGraphics::PushEntries)       ||
+#else
+                !AddEntriesToTable(L, "gl",        LuaOpenGL::PushEntries)         ||
+#endif
+                !AddEntriesToTable(L, "GL",        LuaConstGL::PushEntries)        ||
 		!AddEntriesToTable(L, "LOG",       LuaUtils::PushLogEntries)       ||
 		!AddEntriesToTable(L, "VFS",       LuaVFSDownload::PushEntries)
 	) {

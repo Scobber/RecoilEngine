@@ -1,7 +1,10 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/rts)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/rts/lib)
 
+# GLAD is only needed for the OpenGL backend; skip when building with Metal
+if(NOT USE_METAL)
 ADD_SUBDIRECTORY(glad)
+endif()
 ADD_SUBDIRECTORY(smmalloc)
 ADD_SUBDIRECTORY(lua)
 ADD_SUBDIRECTORY(luasocket)

@@ -125,6 +125,23 @@ namespace Shader {
 			return fileName;
 
 		std::string soPath = "shaders/" + fileName;
+		#ifdef USE_METAL
+		// When Metal is enabled, shader files live under MSL/ with a .metal
+		// suffix. Swap directory and extension so callers keep passing GLSL
+		// paths without caring about the active renderer.
+		const std::string glslDir = "GLSL/";
+		const std::string mslDir  = "MSL/";
+		const std::string glslExt = ".glsl";
+		const std::string mslExt  = ".metal";
+		
+		size_t dirPos = soPath.find(glslDir);
+		size_t extPos = soPath.rfind(glslExt);
+		
+		if (dirPos != std::string::npos)
+			soPath.replace(dirPos, glslDir.size(), mslDir);
+		if (extPos != std::string::npos)
+			soPath.replace(extPos, glslExt.size(), mslExt);
+		#endif
 		std::string soSource = "";
 
 		CFileHandler soFile(soPath);

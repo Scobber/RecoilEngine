@@ -1,5 +1,7 @@
 /* This file is part of the Spring engine (GPL v2 or later), see LICENSE.html */
 
+#ifndef USE_METAL
+// Metal backend uses native APIs, skip GLAD stubs
 #include <glad/glad.h>
 #include <type_traits>
 
@@ -968,3 +970,4 @@ int gladLoadGL(void) {
 
     return 0;
 }
+#endif // USE_METAL
