@@ -1,19 +1,22 @@
 # macOS Xcode project
 
-This directory contains a minimal Xcode project that wraps the CMake build of **RecoilEngine** as an external build system.
+This directory contains an Xcode project that wraps the CMake build of **RecoilEngine** with Metal support enabled.
 
 ## Regenerating the build files
-Run `./regenerate.sh` from this directory to (re)configure the CMake build trees used by Xcode:
+`regenerate.sh` is executed automatically by a build phase when a new configuration is built or when the CMake files change. It configures `build/Debug-Metal` and `build/Release-Metal` with `-DUSE_METAL=ON`. The script can still be run manually:
 
 ```sh
 cd macos
-./regenerate.sh
+./regenerate.sh -DUSE_METAL=ON
 ```
-
-This creates `build/Debug-Metal` and `build/Release-Metal` directories at the repository root.
 
 ## Building in Xcode
 1. Open `RecoilEngine.xcodeproj`.
-2. Choose either the **Debug-Metal** or **Release-Metal** scheme.
-3. Build or run to invoke CMake in the corresponding build directory.
-4. Rerun `./regenerate.sh` whenever `CMakeLists.txt` files change to update the build files.
+2. Select the **Debug-Metal** or **Release-Metal** scheme.
+3. Build or run. The project will:
+   - Regenerate the CMake build tree when required.
+   - Compile `.metal` shader sources under `cont/base/springcontent/shaders/MSL` using `metal` and `metallib`.
+   - Invoke `xcode-build.sh` with `-DUSE_METAL=ON` to build the engine.
+
+## Debugging
+Launch the application from Xcode and use **Product > Capture GPU Frame** to debug with Metal's frame capture tools.

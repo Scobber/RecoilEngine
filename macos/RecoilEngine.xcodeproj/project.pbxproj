@@ -14,18 +14,21 @@
 /* End PBXGroup section */
 
 /* Begin PBXLegacyTarget section */
-	1F5731C226B040FD00BAEAD1 /* RecoilEngine */ = {
-		isa = PBXLegacyTarget;
-		buildArgumentsString = "";
-		buildConfigurationList = 1F5731C426B040FD00BAEAD1 /* Build configuration list for PBXLegacyTarget \"RecoilEngine\" */;
-		buildPhases = (
-		);
-		buildToolPath = "../xcode-build.sh";
-		buildWorkingDirectory = "..";
-		dependencies = (
-		);
-		name = RecoilEngine;
-		passBuildSettingsInEnvironment = 1;
+        1F5731C226B040FD00BAEAD1 /* RecoilEngine */ = {
+                isa = PBXLegacyTarget;
+                buildArgumentsString = "";
+                buildConfigurationList = 1F5731C426B040FD00BAEAD1 /* Build configuration list for PBXLegacyTarget \"RecoilEngine\" */;
+                buildPhases = (
+                        1F5731D726B0410000BAEAD1 /* Regenerate */,
+                        1F5731D826B0410000BAEAD1 /* Compile Metal Shaders */,
+                        1F5731D926B0410000BAEAD1 /* Build */,
+                );
+                buildToolPath = "/usr/bin/true";
+                buildWorkingDirectory = "..";
+                dependencies = (
+                );
+                name = RecoilEngine;
+                passBuildSettingsInEnvironment = 1;
 		productName = RecoilEngine;
 	};
 /* End PBXLegacyTarget section */
@@ -53,17 +56,78 @@
 	};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+        1F5731D726B0410000BAEAD1 /* Regenerate */ = {
+                isa = PBXShellScriptBuildPhase;
+                buildActionMask = 2147483647;
+                files = (
+                );
+                inputFileListPaths = (
+                );
+                inputPaths = (
+                        "$(SRCROOT)/../CMakeLists.txt",
+                );
+                outputFileListPaths = (
+                );
+                outputPaths = (
+                );
+                runOnlyForDeploymentPostprocessing = 0;
+                shellPath = /bin/sh;
+                shellScript = "cd \"$(SRCROOT)/..\"\\nif [ ! -d \"build/$CONFIGURATION\" ]; then\\n  ./macos/regenerate.sh -DUSE_METAL=${USE_METAL}\\nfi\\n";
+        };
+        1F5731D826B0410000BAEAD1 /* Compile Metal Shaders */ = {
+                isa = PBXShellScriptBuildPhase;
+                buildActionMask = 2147483647;
+                files = (
+                );
+                inputFileListPaths = (
+                );
+                inputPaths = (
+                        "$(SRCROOT)/../cont/base/springcontent/shaders/MSL/*.metal",
+                );
+                outputFileListPaths = (
+                );
+                outputPaths = (
+                        "$(SRCROOT)/../cont/base/springcontent/shaders/MSL/engine.metallib",
+                );
+                runOnlyForDeploymentPostprocessing = 0;
+                shellPath = /bin/sh;
+                shellScript = "set -e\\nSHADERS_DIR=\"$(SRCROOT)/../cont/base/springcontent/shaders/MSL\"\\nfor src in \"$SHADERS_DIR\"/*.metal; do\\n  metal \"$src\" -o \"${src%.metal}.air\"\\ndone\\nmetallib \"$SHADERS_DIR\"/*.air -o \"$SHADERS_DIR/engine.metallib\"\\n";
+        };
+        1F5731D926B0410000BAEAD1 /* Build */ = {
+                isa = PBXShellScriptBuildPhase;
+                buildActionMask = 2147483647;
+                files = (
+                );
+                inputFileListPaths = (
+                );
+                inputPaths = (
+                );
+                outputFileListPaths = (
+                );
+                outputPaths = (
+                );
+                runOnlyForDeploymentPostprocessing = 0;
+                shellPath = /bin/sh;
+                shellScript = "cd \"$(SRCROOT)/..\"\\nCONFIGURATION=${CONFIGURATION} ACTION=${ACTION} ./macos/xcode-build.sh -DUSE_METAL=${USE_METAL}\\n";
+        };
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin XCBuildConfiguration section */
-	1F5731C526B040FD00BAEAD1 /* Debug-Metal */ = {
-		isa = XCBuildConfiguration;
-		buildSettings = {};
-		name = "Debug-Metal";
-	};
-	1F5731C626B040FD00BAEAD1 /* Release-Metal */ = {
-		isa = XCBuildConfiguration;
-		buildSettings = {};
-		name = "Release-Metal";
-	};
+        1F5731C526B040FD00BAEAD1 /* Debug-Metal */ = {
+                isa = XCBuildConfiguration;
+                buildSettings = {
+                        USE_METAL = ON;
+                };
+                name = "Debug-Metal";
+        };
+        1F5731C626B040FD00BAEAD1 /* Release-Metal */ = {
+                isa = XCBuildConfiguration;
+                buildSettings = {
+                        USE_METAL = ON;
+                };
+                name = "Release-Metal";
+        };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
